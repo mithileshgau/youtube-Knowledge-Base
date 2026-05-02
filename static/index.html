@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Knowledge Base</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #6c63ff;
+      --accent2: #ff6584;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --green: #48bb78;
+      --yellow: #f6e05e;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo { font-size: 22px; font-weight: 700; color: var(--accent); }
+    header .sub  { font-size: 13px; color: var(--muted); }
+
+    /* ── search bar ── */
+    .search-wrap {
+      max-width: 760px;
+      margin: 48px auto 0;
+      padding: 0 20px;
+    }
+    .search-wrap h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    .search-wrap p  { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    .input-row input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input-row input:focus { border-color: var(--accent); }
+    .input-row input::placeholder { color: var(--muted); }
+
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:hover  { opacity: .88; }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── status bar ── */
+    #status-bar {
+      max-width: 760px;
+      margin: 20px auto 0;
+      padding: 0 20px;
+      display: none;
+    }
+    .status-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 14px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status-text { color: var(--muted); }
+    .status-error { color: var(--accent2); }
+
+    /* ── results ── */
+    #results {
+      max-width: 1100px;
+      margin: 36px auto 60px;
+      padding: 0 20px;
+      display: none;
+    }
+
+    /* video card */
+    .video-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      gap: 24px;
+      padding: 20px;
+      margin-bottom: 28px;
+      align-items: flex-start;
+    }
+    .video-card img {
+      width: 200px;
+      height: 113px;
+      object-fit: cover;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .video-card .info h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .video-card .info .meta { color: var(--muted); font-size: 13px; display: flex; gap: 16px; flex-wrap: wrap; }
+    .video-card .info .meta span { display: flex; align-items: center; gap: 4px; }
+    .badge {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    /* tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 10px 20px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color .2s, border-color .2s;
+      margin-bottom: -1px;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── flashcards ── */
+    .flashcard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .flashcard {
+      perspective: 800px;
+      height: 160px;
+      cursor: pointer;
+    }
+    .flashcard-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform .45s ease;
+    }
+    .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+    .flashcard-front, .flashcard-back {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .flashcard-front {
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .flashcard-back {
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      transform: rotateY(180deg);
+    }
+    .flashcard-front .label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .flashcard-back .label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      color: var(--accent2);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .flashcard-front p, .flashcard-back p { font-size: 14px; line-height: 1.5; }
+    .flashcard-hint { font-size: 11px; color: var(--muted); margin-top: 10px; text-align: center; }
+
+    /* ── quiz ── */
+    .quiz-list { display: flex; flex-direction: column; gap: 20px; }
+    .quiz-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+    .quiz-item .q-num { font-size: 11px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .quiz-item .q-text { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+    .options { display: flex; flex-direction: column; gap: 8px; }
+    .option {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      word-break: break-word;
+      line-height: 1.5;
+    }
+    .option:hover { border-color: var(--accent); }
+    .option .opt-letter {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .option.correct { border-color: var(--green); background: rgba(72,187,120,.08); }
+    .option.correct .opt-letter { background: var(--green); color: #000; }
+    .option.wrong   { border-color: var(--accent2); background: rgba(255,101,132,.08); }
+    .option.wrong   .opt-letter { background: var(--accent2); color: #fff; }
+    .explanation {
+      margin-top: 14px;
+      padding: 12px 16px;
+      background: var(--surface2);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: var(--muted);
+      display: none;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .explanation.visible { display: block; }
+
+    /* ── glossary ── */
+    .glossary-search {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 16px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      width: 100%;
+      max-width: 360px;
+      margin-bottom: 18px;
+      transition: border-color .2s;
+    }
+    .glossary-search:focus { border-color: var(--accent); }
+    .glossary-list { display: flex; flex-direction: column; gap: 10px; }
+    .glossary-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+    .glossary-item .term { font-size: 15px; font-weight: 600; color: var(--accent); margin-bottom: 6px; }
+    .glossary-item .def  { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    /* ── transcript ── */
+    .transcript-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--muted);
+      word-break: break-word;
+      word-wrap: break-word;
+      white-space: normal;
+      max-height: none;
+      overflow-y: auto;
+    }
+    .transcript-box::-webkit-scrollbar { width: 6px; }
+    .transcript-box::-webkit-scrollbar-track { background: var(--surface2); }
+    .transcript-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── chapters ── */
+    .chapters-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+    .chapter-item {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .chapter-time { color: var(--accent); font-weight: 600; min-width: 56px; }
+
+    @media (max-width: 900px) {
+      .video-card { flex-direction: column; }
+      .video-card img { width: 100%; height: auto; }
+      .input-row { flex-direction: column; }
+    }
+
+    /* ── single column layout ── */
+    .main-layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+    }
+    .results-col { width: 100%; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">YKB</span>
+  <span class="sub">YouTube Knowledge Base</span>
+</header>
+
+<div class="search-wrap">
+  <h1>Analyze any YouTube video</h1>
+  <p>Paste a URL to generate flashcards, a quiz, and a glossary automatically.</p>
+  <div class="input-row">
+    <input id="url-input" type="text" placeholder="YouTube URL or local file path…" />
+    <button class="btn" id="analyze-btn" onclick="startAnalysis()">Analyze</button>
+  </div>
+</div>
+
+<div id="status-bar">
+  <div class="status-card" id="status-card">
+    <div class="spinner" id="spinner"></div>
+    <span class="status-text" id="status-text">Starting analysis…</span>
+  </div>
+</div>
+
+<div class="main-layout">
+  <div class="results-col">
+    <div id="results" style="display:none">
+      <!-- video card -->
+      <div class="video-card" id="video-card">
+        <img id="thumbnail" src="" alt="thumbnail" />
+        <div class="info">
+          <h2 id="video-title"></h2>
+          <div class="meta">
+            <span id="duration-badge"></span>
+            <span id="chapters-badge"></span>
+          </div>
+          <div id="chapters-list" class="chapters-list" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('flashcards', this)">Flashcards</button>
+        <button class="tab-btn" onclick="switchTab('quiz', this)">Quiz</button>
+        <button class="tab-btn" onclick="switchTab('glossary', this)">Glossary</button>
+        <button class="tab-btn" onclick="switchTab('transcript', this)">Transcript</button>
+      </div>
+
+      <div id="tab-flashcards" class="tab-panel active"></div>
+      <div id="tab-quiz" class="tab-panel"></div>
+      <div id="tab-glossary" class="tab-panel"></div>
+      <div id="tab-transcript" class="tab-panel"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let pollInterval = null;
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+async function startAnalysis() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) return;
+
+  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('results').style.display = 'none';
+  const statusBar = document.getElementById('status-bar');
+  const statusText = document.getElementById('status-text');
+  const spinner = document.getElementById('spinner');
+  const card = document.getElementById('status-card');
+  statusBar.style.display = 'block';
+  spinner.style.display = 'block';
+  statusText.className = 'status-text';
+  statusText.textContent = 'Submitting URL to pipeline…';
+
+  let jobId;
+  try {
+    const res = await fetch('/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    jobId = data.job_id;
+  } catch (err) {
+    showError(err.message);
+    return;
+  }
+
+  statusText.textContent = 'Downloading and transcribing video… this may take a few minutes.';
+  pollInterval = setInterval(() => pollStatus(jobId), 3000);
+}
+
+async function pollStatus(jobId) {
+  try {
+    const res = await fetch('/status/' + jobId);
+    const data = await res.json();
+    if (data.status === 'done') {
+      clearInterval(pollInterval);
+      document.getElementById('status-bar').style.display = 'none';
+      document.getElementById('analyze-btn').disabled = false;
+      renderResults(data.result);
+    } else if (data.status === 'error') {
+      clearInterval(pollInterval);
+      showError(data.error);
+    }
+  } catch (err) {
+    clearInterval(pollInterval);
+    showError(err.message);
+  }
+}
+
+function showError(msg) {
+  document.getElementById('analyze-btn').disabled = false;
+  const statusText = document.getElementById('status-text');
+  const spinner = document.getElementById('spinner');
+  spinner.style.display = 'none';
+  statusText.className = 'status-error';
+  statusText.textContent = 'Error: ' + msg;
+}
+
+function fmt(seconds) {
+  const m = Math.floor(seconds / 60), s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function renderResults(data) {
+  const meta = data.metadata || {};
+
+  // video card
+  document.getElementById('thumbnail').src = meta.thumbnail_url || '';
+  document.getElementById('video-title').textContent = meta.title || 'Unknown title';
+  document.getElementById('duration-badge').textContent = meta.duration_seconds ? '⏱ ' + fmt(meta.duration_seconds) : '';
+
+  const chaps = meta.chapters;
+  if (chaps && chaps.length) {
+    document.getElementById('chapters-badge').textContent = `📑 ${chaps.length} chapters`;
+    const list = document.getElementById('chapters-list');
+    list.style.display = 'flex';
+    list.innerHTML = chaps.map(c =>
+      `<div class="chapter-item"><span class="chapter-time">${fmt(c.start_time || 0)}</span><span>${c.title || ''}</span></div>`
+    ).join('');
+  }
+
+  renderFlashcards(data.flashcards || []);
+  renderQuiz(data.quiz || []);
+  renderGlossary(data.glossary || []);
+  renderTranscript(data.transcript || '');
+
+  document.getElementById('results').style.display = 'block';
+}
+
+// ── flashcards ────────────────────────────────────────────────────────────────
+function renderFlashcards(cards) {
+  const el = document.getElementById('tab-flashcards');
+  el.innerHTML = `<p class="flashcard-hint" style="margin-bottom:16px;color:var(--muted);font-size:13px;">Click a card to flip it</p>
+  <div class="flashcard-grid">` +
+    cards.map((c, i) => `
+      <div class="flashcard" id="fc-${i}" onclick="this.classList.toggle('flipped')">
+        <div class="flashcard-inner">
+          <div class="flashcard-front">
+            <div class="label">Question</div>
+            <p>${esc(c.front)}</p>
+          </div>
+          <div class="flashcard-back">
+            <div class="label">Answer</div>
+            <p>${esc(c.back)}</p>
+          </div>
+        </div>
+      </div>`).join('') +
+  `</div>`;
+}
+
+// ── quiz ──────────────────────────────────────────────────────────────────────
+function renderQuiz(questions) {
+  const el = document.getElementById('tab-quiz');
+  el.innerHTML = '<div class="quiz-list">' +
+    questions.map((q, qi) => {
+      const letters = ['A', 'B', 'C', 'D'];
+      const opts = (q.options || []).map((opt, oi) => {
+        const letter = letters[oi] || String(oi + 1);
+        const text = opt.replace(/^[A-D][):.]\s*/i, '');
+        return `<div class="option" id="opt-${qi}-${oi}" data-qi="${qi}" data-oi="${oi}" data-letter="${letter}" data-correct="${q.answer}" data-exp="${qi}" onclick="answerQuiz(this)">
+          <span class="opt-letter">${letter}</span>${esc(text)}
+        </div>`;
+      }).join('');
+      return `<div class="quiz-item">
+        <div class="q-num">Question ${qi + 1}</div>
+        <div class="q-text">${esc(q.question)}</div>
+        <div class="options" id="opts-${qi}">${opts}</div>
+        <div class="explanation" id="exp-${qi}">${esc(q.explanation || '')}</div>
+      </div>`;
+    }).join('') +
+  '</div>';
+}
+
+function answerQuiz(el) {
+  const qi = el.dataset.qi;
+  const oi = parseInt(el.dataset.oi);
+  const letter = el.dataset.letter;
+  const correct = el.dataset.correct;
+  const opts = document.getElementById('opts-' + qi);
+
+  if (opts.dataset.answered) return;
+  opts.dataset.answered = '1';
+  opts.querySelectorAll('.option').forEach((optEl, i) => {
+    const l = optEl.dataset.letter;
+    if (l === correct) optEl.classList.add('correct');
+    else if (i === oi) optEl.classList.add('wrong');
+    optEl.style.cursor = 'default';
+  });
+  document.getElementById('exp-' + qi).classList.add('visible');
+}
+
+// ── glossary ──────────────────────────────────────────────────────────────────
+let _glossaryData = [];
+function renderGlossary(terms) {
+  _glossaryData = terms;
+  const el = document.getElementById('tab-glossary');
+  el.innerHTML = `<input class="glossary-search" type="text" placeholder="Search terms…"
+    oninput="filterGlossary(this.value)" />
+  <div class="glossary-list" id="glossary-list"></div>`;
+  renderGlossaryItems(terms);
+}
+function renderGlossaryItems(terms) {
+  document.getElementById('glossary-list').innerHTML = terms.map(t =>
+    `<div class="glossary-item">
+      <div class="term">${esc(t.term)}</div>
+      <div class="def">${esc(t.definition)}</div>
+    </div>`).join('');
+}
+function filterGlossary(q) {
+  const lq = q.toLowerCase();
+  renderGlossaryItems(lq
+    ? _glossaryData.filter(t => t.term.toLowerCase().includes(lq) || t.definition.toLowerCase().includes(lq))
+    : _glossaryData);
+}
+
+// ── transcript ────────────────────────────────────────────────────────────────
+function renderTranscript(text) {
+  document.getElementById('tab-transcript').innerHTML =
+    `<div class="transcript-box">${esc(text)}</div>`;
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

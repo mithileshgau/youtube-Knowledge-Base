@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Media
+*.mp4
+*.mkv
+*.avi
+*.jpg
+*.png
+static/thumbnails/*.jpg
+
+# RocketRide / Temp
+.rocketride/
+scratch/
+ykb_*_*/
+
+# IDEs
+.cursor/
+.claude/
+.vscode/
+.idea/

@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pydantic
+rocketride
+python-dotenv
+yt-dlp
+google-generativeai
+openai
+qdrant-client
+opencv-python
+pillow
+requests

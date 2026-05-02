@@ -1,0 +1,350 @@
+{
+  "components": [
+    {
+      "id": "webhook_1",
+      "provider": "webhook",
+      "config": {
+        "hideForm": true,
+        "mode": "Source",
+        "parameters": {},
+        "type": "webhook"
+      },
+      "ui": {
+        "position": {
+          "x": 20,
+          "y": 300
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
+    },
+    {
+      "id": "parse_1",
+      "provider": "parse",
+      "config": {},
+      "ui": {
+        "position": {
+          "x": 240,
+          "y": 300
+        },
+        "measured": {
+          "width": 150,
+          "height": 136
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "tags",
+          "from": "webhook_1"
+        }
+      ]
+    },
+    {
+      "id": "frame_grabber_1",
+      "provider": "frame_grabber",
+      "config": {
+        "profile": "transition",
+        "transition": {
+          "percent": 0.4,
+          "min_scene_gap": 1,
+          "start_time": 0,
+          "duration": 0,
+          "max_frames": 300
+        }
+      },
+      "ui": {
+        "position": {
+          "x": 460,
+          "y": 160
+        },
+        "measured": {
+          "width": 150,
+          "height": 101
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "video",
+          "from": "parse_1"
+        }
+      ]
+    },
+    {
+      "id": "audio_transcribe_1",
+      "provider": "audio_transcribe",
+      "config": {
+        "profile": "default",
+        "default": {
+          "model": "large-v3",
+          "silence_threshold": 0.2,
+          "min_seconds": 30,
+          "max_seconds": 60,
+          "vad_level": 2
+        }
+      },
+      "ui": {
+        "position": {
+          "x": 460,
+          "y": 440
+        },
+        "measured": {
+          "width": 150,
+          "height": 84
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "audio",
+          "from": "parse_1"
+        }
+      ]
+    },
+    {
+      "id": "ocr_1",
+      "provider": "ocr",
+      "config": {
+        "profile": "latin",
+        "engine": "easyocr",
+        "script_family": "latin",
+        "table_engine": "doctr"
+      },
+      "ui": {
+        "position": {
+          "x": 680,
+          "y": 160
+        },
+        "measured": {
+          "width": 150,
+          "height": 84
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "image",
+          "from": "frame_grabber_1"
+        }
+      ]
+    },
+    {
+      "id": "ner_1",
+      "provider": "ner",
+      "config": {
+        "profile": "bertLarge",
+        "bertLarge": {
+          "aggregation_strategy": "simple",
+          "min_confidence": 0.85,
+          "store_in_metadata": true
+        }
+      },
+      "ui": {
+        "position": {
+          "x": 680,
+          "y": 440
+        },
+        "measured": {
+          "width": 150,
+          "height": 93
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "audio_transcribe_1"
+        }
+      ]
+    },
+    {
+      "id": "preprocessor_langchain_1",
+      "provider": "preprocessor_langchain",
+      "config": {
+        "profile": "default",
+        "default": {
+          "splitter": "RecursiveCharacterTextSplitter",
+          "mode": "strlen",
+          "strlen": 800
+        }
+      },
+      "ui": {
+        "position": {
+          "x": 900,
+          "y": 300
+        },
+        "measured": {
+          "width": 150,
+          "height": 84
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "audio_transcribe_1"
+        },
+        {
+          "lane": "text",
+          "from": "ocr_1"
+        }
+      ]
+    },
+    {
+      "id": "question_1",
+      "provider": "question",
+      "config": {},
+      "ui": {
+        "position": {
+          "x": 900,
+          "y": 560
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "audio_transcribe_1"
+        }
+      ]
+    },
+    {
+      "id": "prompt_1",
+      "provider": "prompt",
+      "config": {
+        "instructions": [
+          "You are an expert educational content creator.",
+          "You will receive: the full video transcript (as the question), OCR text extracted from slide frames, named entities, and chunked transcript documents as context.",
+          "Generate a structured study guide as valid JSON using this schema exactly:",
+          "{",
+          "  \"metadata\": { \"title\": string },",
+          "  \"transcript\": string,",
+          "  \"chapters\": [{\"chapter_number\": number, \"title\": string, \"start_time\": number, \"end_time\": number, \"summary\": string, \"key_points\": [string], \"slide_snippets\": [string]}],",
+          "  \"flashcards\": [{\"front\": string, \"back\": string}],",
+          "  \"quiz\": [{\"question\": string, \"options\": [\"A) ...\", \"B) ...\", \"C) ...\", \"D) ...\"], \"answer\": \"A|B|C|D\", \"explanation\": string}],",
+          "  \"key_takeaways\": [string],",
+          "  \"glossary\": [{\"term\": string, \"definition\": string}],",
+          "  \"people_mentioned\": [string],",
+          "  \"technologies_mentioned\": [string],",
+          "  \"searchable_tags\": [string]",
+          "}.",
+          "IMPORTANT:",
+          "1. The 'transcript' field MUST contain the original audio transcript text ONLY. Do NOT include OCR text, slide content, or any other data in this field. Use the TRANSCRIPT provided in the context exactly.",
+          "2. Return ONLY valid JSON, no markdown fences.",
+          "3. Include at least 8-10 quiz questions, 12+ flashcards, and 15+ glossary terms."
+        ],
+        "parameters": {}
+      },
+      "ui": {
+        "position": {
+          "x": 1120,
+          "y": 560
+        },
+        "measured": {
+          "width": 150,
+          "height": 119
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "ocr_1"
+        },
+        {
+          "lane": "text",
+          "from": "ner_1"
+        },
+        {
+          "lane": "documents",
+          "from": "preprocessor_langchain_1"
+        },
+        {
+          "lane": "questions",
+          "from": "question_1"
+        }
+      ]
+    },
+    {
+      "id": "llm_gemini_1",
+      "provider": "llm_gemini",
+      "config": {
+        "profile": "custom",
+        "custom": {
+          "model": "gemini-3.1-flash-lite-preview",
+          "modelTotalTokens": 1000000,
+          "outputTokens": 8192,
+          "apikey": "${ROCKETRIDE_GEMINI_APIKEY}"
+        }
+      },
+      "ui": {
+        "position": {
+          "x": 1340,
+          "y": 560
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "questions",
+          "from": "prompt_1"
+        }
+      ]
+    },
+    {
+      "id": "response_answers_1",
+      "provider": "response_answers",
+      "config": {
+        "laneName": "study_guide"
+      },
+      "ui": {
+        "position": {
+          "x": 1560,
+          "y": 560
+        },
+        "measured": {
+          "width": 150,
+          "height": 66
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "answers",
+          "from": "llm_gemini_1"
+        }
+      ]
+    }
+  ],
+  "project_id": "c9d1e2f3-a4b5-6789-cdef-012345678901",
+  "viewport": {
+    "x": -101.5,
+    "y": 45.25,
+    "zoom": 0.5
+  },
+  "version": 1,
+  "source": "webhook_1"
+}
