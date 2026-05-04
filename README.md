@@ -47,10 +47,34 @@ An intelligent video analysis pipeline that transforms YouTube videos (or local 
 - Wait for the analysis to complete.
 - Browse the interactive study guide, quiz, and flashcards.
 
-## Pipeline Structure
-The core logic resides in `pipelines/youtube-url-to-study-guide.pipe`. This definition handles:
-1. `webhook` -> Binary video input
-2. `parse` -> Media splitting
-3. `audio_transcribe` -> Text extraction
-4. `frame_grabber` + `ocr` -> Visual text extraction
-5. `llm_gemini` -> Final JSON generation
+## Pipeline Visualization
+![RocketRide Pipeline](assets/pipeline.png)
+
+## Detailed Architecture
+The core logic resides in `pipelines/youtube-url-to-study-guide.pipe`. This multi-modal pipeline leverages RocketRide's distributed processing to handle complex media analysis:
+
+1.  **Ingestion (`webhook`)**: The entry point for video source URLs or binary files.
+2.  **Media Parsing (`parse`)**: Parallelizes the workflow by splitting the input into dedicated video and audio streams.
+3.  **Visual Processing**:
+    *   **Frame Grabbing (`frame_grabber`)**: Detects scene transitions to extract key frames (e.g., slides or diagrams) without redundancy.
+    *   **OCR (`ocr`)**: Extracts text from visual frames using EasyOCR and DocTR, ensuring whiteboard notes or slide text are captured.
+4.  **Audio Processing**:
+    *   **Transcription (`audio_transcribe`)**: High-fidelity speech-to-text using the Whisper `large-v3` model.
+    *   **NER (`ner`)**: Identifies key entities like people, organizations, and technologies mentioned in the video.
+5.  **Context Synthesis**:
+    *   **LangChain Preprocessing**: Chunks both transcript and OCR text to maintain context within LLM token limits.
+    *   **Prompt Orchestration**: Aggregates all extracted data into a structured prompt that enforces a specific study-guide JSON schema.
+6.  **Intelligence (`llm_gemini`)**: Powered by **Gemini 1.5 Flash**, the system synthesizes chapters, summaries, key points, and interactive learning materials.
+7.  **Output (`response_answers`)**: Delivers the finalized JSON study guide to the dashboard.
+
+## User Interface
+The dashboard provides an interactive learning experience with three primary modes:
+
+### 1. Flashcards (Initial Page)
+![Flashcards UI](assets/Intro-Flashcards.png)
+
+### 2. Interactive Quiz
+![Quiz UI](assets/Quiz.png)
+
+### 3. Glossary & Terms
+![Glossary UI](assets/Glossary.png)
